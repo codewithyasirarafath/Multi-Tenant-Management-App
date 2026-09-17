@@ -1,0 +1,369 @@
+{
+  "collectionName": "Multi-Tenant Delivery Management API",
+  "baseURL": "http://localhost:3000/api/v1",
+  "auth": {
+    "type": "bearer",
+    "name": "Bearer Token",
+    "variable": "authToken"
+  },
+  "environments": {
+    "development": {
+      "authToken": "",
+      "orgId": "123"
+    }
+  },
+  "requests": [
+    {
+      "name": "Auth - Register",
+      "endpoint": "POST /auth/register",
+      "description": "Register a new user",
+      "schema": {
+        "body": {
+          "email": "user@gmail.com",
+          "password": "Str0ngP@ss!",
+          "firstName": "John",
+          "lastName": "Doe",
+          "mobile": "+1234567890"
+        }
+      }
+    },
+    {
+      "name": "Auth - Login",
+      "endpoint": "POST /auth/login",
+      "description": "Login user",
+      "schema": {
+        "body": {
+          "email": "user@gmail.com",
+          "password": "Str0ngP@ss!"
+        }
+      }
+    },
+    {
+      "name": "Auth - Get Current User",
+      "endpoint": "GET /auth/me",
+      "description": "Get current user with memberships and 6-digit codes",
+      "auth": true
+    },
+    {
+      "name": "Auth - Request Password Reset",
+      "endpoint": "POST /auth/password/reset-request",
+      "description": "Request password reset link",
+      "schema": {
+        "body": {
+          "email": "user@gmail.com"
+        }
+      }
+    },
+    {
+      "name": "Auth - Reset Password",
+      "endpoint": "POST /auth/password/reset",
+      "description": "Reset password with reset token",
+      "schema": {
+        "body": {
+          "token": "reset-token-here",
+          "newPassword": "NewStr0ngP@ss!"
+        }
+      }
+    },
+    {
+      "name": "Auth - Change Password",
+      "endpoint": "POST /auth/password/change",
+      "description": "Change current password",
+      "auth": true,
+      "schema": {
+        "body": {
+          "currentPassword": "OldStr0ngP@ss!",
+          "newPassword": "NewStr0ngP@ss!"
+        }
+      }
+    },
+    {
+      "name": "Auth - Refresh Token",
+      "endpoint": "POST /auth/token/refresh",
+      "description": "Refresh access token with rotation",
+      "schema": {
+        "body": {
+          "refreshToken": "refresh-token-here"
+        }
+      }
+    },
+    {
+      "name": "Auth - Logout",
+      "endpoint": "POST /auth/logout",
+      "description": "Logout and revoke current refresh token",
+      "auth": true,
+      "schema": {
+        "body": {
+          "refreshToken": "refresh-token-here"
+        }
+      }
+    },
+    {
+      "name": "Auth - Revoke All Sessions",
+      "endpoint": "POST /auth/sessions/revoke-all",
+      "description": "Revoke all user refresh tokens",
+      "auth": true
+    },
+    {
+      "name": "Auth - Get Membership Codes by Email",
+      "endpoint": "POST /auth/membership-codes",
+      "description": "Get 6-digit membership codes array: [123000, 124789]",
+      "schema": {
+        "body": {
+          "email": "user@gmail.com"
+        }
+      }
+    },
+    {
+      "name": "Organizations - List",
+      "endpoint": "GET /organizations",
+      "description": "List all organizations",
+      "auth": true
+    },
+    {
+      "name": "Organizations - Get",
+      "endpoint": "GET /organizations/:id",
+      "description": "Get organization by ID",
+      "auth": true,
+      "params": {
+        "id": "org-uuid-here"
+      }
+    },
+    {
+      "name": "Organizations - Create",
+      "endpoint": "POST /organizations",
+      "description": "Create a new organization with 3-digit org_code",
+      "auth": true,
+      "schema": {
+        "body": {
+          "name": "Acme Corp",
+          "slug": "acme-corp",
+          "orgCode": 123
+        }
+      }
+    },
+    {
+      "name": "Entities - List",
+      "endpoint": "GET /organizations/:orgId/entities",
+      "description": "List entities in an organization",
+      "auth": true,
+      "params": {
+        "orgId": "org-uuid-here"
+      }
+    },
+    {
+      "name": "Entities - Create",
+      "endpoint": "POST /organizations/:orgId/entities",
+      "description": "Create a new entity with 3-digit ent_code",
+      "auth": true,
+      "params": {
+        "orgId": "org-uuid-here"
+      },
+      "schema": {
+        "body": {
+          "name": "Main Warehouse",
+          "code": "WH-001",
+          "entCode": 789
+        }
+      }
+    },
+    {
+      "name": "Users - List",
+      "endpoint": "GET /organizations/:orgId/users",
+      "description": "List users in an organization",
+      "auth": true,
+      "params": {
+        "orgId": "org-uuid-here"
+      }
+    },
+    {
+      "name": "Users - Create",
+      "endpoint": "POST /organizations/:orgId/users",
+      "description": "Create a new user",
+      "auth": true,
+      "params": {
+        "orgId": "org-uuid-here"
+      },
+      "schema": {
+        "body": {
+          "firstName": "John",
+          "lastName": "Doe",
+          "mobile": "+1234567890",
+          "email": "john.doe@gmail.com"
+        }
+      }
+    },
+    {
+      "name": "Roles - List",
+      "endpoint": "GET /organizations/:orgId/roles",
+      "description": "List roles for an organization",
+      "auth": true,
+      "params": {
+        "orgId": "org-uuid-here"
+      }
+    },
+    {
+      "name": "Roles - Create",
+      "endpoint": "POST /organizations/:orgId/roles",
+      "description": "Create a custom role in an organization",
+      "auth": true,
+      "params": {
+        "orgId": "org-uuid-here"
+      },
+      "schema": {
+        "body": {
+          "name": "super_admin",
+          "description": "Super administrator with all permissions"
+        }
+      }
+    },
+    {
+      "name": "Memberships - List",
+      "endpoint": "GET /organizations/:orgId/users/:userId/memberships",
+      "description": "List user memberships",
+      "auth": true,
+      "params": {
+        "orgId": "org-uuid-here",
+        "userId": "user-uuid-here"
+      }
+    },
+    {
+      "name": "Memberships - Get Codes",
+      "endpoint": "GET /organizations/:orgId/users/:userId/memberships/codes",
+      "description": "Get 6-digit membership codes: [orgCode*1000+entCode, ...]",
+      "auth": true,
+      "params": {
+        "orgId": "org-uuid-here",
+        "userId": "user-uuid-here"
+      }
+    },
+    {
+      "name": "Memberships - Assign",
+      "endpoint": "POST /organizations/:orgId/users/:userId/memberships",
+      "description": "Assign role to user in org/entity",
+      "auth": true,
+      "params": {
+        "orgId": "org-uuid-here",
+        "userId": "user-uuid-here"
+      },
+      "schema": {
+        "body": {
+          "orgId": "org-uuid-here",
+          "entId": "ent-uuid-here",
+          "roleId": "role-uuid-here"
+        }
+      }
+    },
+    {
+      "name": "Deliveries - List",
+      "endpoint": "GET /organizations/:orgId/deliveries",
+      "description": "List deliveries with pagination and optional filters",
+      "auth": true,
+      "params": {
+        "orgId": "org-uuid-here"
+      },
+      "schema": {
+        "query": {
+          "limit": 50,
+          "offset": 0,
+          "status": "pending"
+        }
+      }
+    },
+    {
+      "name": "Deliveries - Create",
+      "endpoint": "POST /organizations/:orgId/deliveries",
+      "description": "Create a new delivery",
+      "auth": true,
+      "params": {
+        "orgId": "org-uuid-here"
+      },
+      "schema": {
+        "body": {
+          "trackingNumber": "TRK-001",
+          "senderName": "John Doe",
+          "receiverName": "Jane Smith",
+          "destination": "New York",
+          "status": "pending"
+        }
+      }
+    },
+    {
+      "name": "Deliveries - Track",
+      "endpoint": "GET /organizations/:orgId/deliveries/track/:trackingNumber",
+      "description": "Track delivery by tracking number",
+      "auth": true,
+      "params": {
+        "orgId": "org-uuid-here",
+        "trackingNumber": "TRK-001"
+      }
+    },
+    {
+      "name": "AI Chat - Ask",
+      "endpoint": "POST /organizations/:orgId/ai-chat/ask",
+      "description": "Ask a question about deliveries",
+      "auth": true,
+      "params": {
+        "orgId": "org-uuid-here"
+      },
+      "schema": {
+        "body": {
+          "question": "How many deliveries are pending?"
+        }
+      }
+    },
+    {
+      "name": "Permissions - List",
+      "endpoint": "GET /organizations/:orgId/permissions",
+      "description": "List all permissions",
+      "auth": true,
+      "params": {
+        "orgId": "org-uuid-here"
+      }
+    },
+    {
+      "name": "Permissions - My Permissions",
+      "endpoint": "GET /organizations/:orgId/users/:userId/my-permissions",
+      "description": "Get current user's permissions",
+      "auth": true,
+      "params": {
+        "orgId": "org-uuid-here",
+        "userId": "user-uuid-here"
+      }
+    },
+    {
+      "name": "Webhooks - List",
+      "endpoint": "GET /organizations/:orgId/webhooks",
+      "description": "List webhook subscriptions for organization",
+      "auth": true,
+      "params": {
+        "orgId": "org-uuid-here"
+      }
+    },
+    {
+      "name": "Webhooks - Create",
+      "endpoint": "POST /organizations/:orgId/webhooks",
+      "description": "Create a webhook subscription",
+      "auth": true,
+      "params": {
+        "orgId": "org-uuid-here"
+      },
+      "schema": {
+        "body": {
+          "url": "https://example.com/webhooks",
+          "events": ["delivery.created", "delivery.status_changed"]
+        }
+      }
+    },
+    {
+      "name": "Webhooks - Test",
+      "endpoint": "POST /organizations/:orgId/webhooks/:webhookId/test",
+      "description": "Test webhook subscription",
+      "auth": true,
+      "params": {
+        "orgId": "org-uuid-here",
+        "webhookId": "webhook-uuid-here"
+      }
+    }
+  ]
+}

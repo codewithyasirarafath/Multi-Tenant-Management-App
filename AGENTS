@@ -1,0 +1,177 @@
+# Project Features Registry
+
+> This file tracks all developed features, technologies used, and architectural decisions
+> for the Multi-Tenant Delivery Management App. Updated alongside CLAUDE.md.
+
+## Technologies
+
+- **Runtime**: Node.js (ES Modules, `"type": "module"` in package.json)
+- **Framework**: Express.js (routes nested with `mergeParams`, asyncHandler middleware)
+- **Database**: PostgreSQL via `pg` package (raw SQL, no ORM) with connection pool tuning
+  - `pg_pool_max`: 20 concurrent clients
+  - `pg_idle_timeout`: 30000ms (30 seconds)
+  - `pg_connection_timeout`: 2000ms (2 seconds)
+- **Config**: `dotenv` (`.env` — never committed)
+- **Auth**: JWT (stateless), `jsonwebtoken` + `bcryptjs` for password hashing
+- **Validation**: `zod` schemas per route + centralized `validate()` middleware
+- **Input Sanitization**: `xss` html-sanitize-xss utility (strips all HTML by default)
+- **Rate Limiting**: `express-rate-limit` (global, auth, API, org-scoped, per-tier by role)
+- **Security**: `helmet`, `cors`
+- **Logging**: `morgan` + request ID middleware
+- **Error Handling**: Custom error classes + Postgres error code mapping (23505/23503)
+- **Documentation**: OpenAPI/Swagger (swagger-jsdoc + swagger-ui-express)
+- **Features Registry**: Text-based features log (features-tracking/)
+- **API Key Management**: Org-admin generated keys with permission scopes + validation middleware
+- **Soft Deletes**: `deleted_at` columns on key tables + `is_active` flags
+
+## Multi-Tenancy Model
+
+- **organizations** = top-level tenant (a company), with 3-digit `org_code` (100-999)
+- **entities** = sub-unit within an org (branch/warehouse/department — flat, not nested), with 3-digit `ent_code` (1-999, unique per org)
+- **users** = global (email unique across all orgs), no org_id/ent_id on user table
+- **user_memberships** = join table linking user → org → optional entity → role; a user can have multiple memberships across different orgs/entities
+- **roles** = system-wide defaults (`org_id IS NULL`: org_admin, ent_manager, staff, delivery_agent) or custom per-org roles
+- **deliveries** = the actual business data module; scoped to org, optionally to an entity, tracks which user created it (`created_by`)
+- **permissions** = granular access control via role_permissions junction table
+- **audit_logs** = trail for all sensitive operations
+- **webhook_subscriptions** = configurable webhook endpoints with event filtering
+- **api_keys** = org-admin generated keys with permission scopes, last_used tracking, expiry
+- **xss sanitization** = all request body/params/query strings sanitized via `utils/sanitize.js`
+
+**Golden rule**: every query is scoped by `org_id`. No model function fetches a record by `id` alone — always `id AND org_id`.
+
+## Current Route Map (all prefixed with `/api/v1` and `/api/v2`)
+
+```
+Auth (v1 & v2):
+  POST   /auth/register
+  POST   /auth/login
+  GET    /auth/me
+  POST   /auth/membership-codes
+  POST   /auth/password/reset-request
+  POST   /auth/password/reset
+  POST   /auth/password/change
+  POST   /auth/token/refresh
+  POST   /auth/logout
+  POST   /auth/sessions/revoke-all
+
+Organizations (v1 & v2):
+  GET/POST           /organizations
+  GET/PUT/DELETE      /organizations/:id
+
+Entities (v1 & v2):
+  GET/POST            /organizations/:orgId/entities
+  GET/PUT/DELETE      /organizations/:orgId/entities/:id
+
+Users (v1 & v2):
+  GET/POST            /organizations/:orgId/users
+  GET/PUT/DELETE      /organizations/:orgId/users/:id
+
+Roles (v1 & v2):
+  GET/POST            /organizations/:orgId/roles
+
+Memberships (v1 & v2):
+  GET/POST            /organizations/:orgId/users/:userId/memberships
+  GET                 /organizations/:orgId/users/:userId/memberships/codes
+  PUT/DELETE          /organizations/:orgId/users/:userId/memberships/:membershipId
+
+Deliveries (v1 & v2):
+  GET/POST            /organizations/:orgId/deliveries
+  GET                 /organizations/:orgId/deliveries/track/:trackingNumber
+  GET/PUT/DELETE      /organizations/:orgId/deliveries/:id
+  PATCH               /organizations/:orgId/deliveries/:id/status
+
+AI Chat (v1 & v2):
+  POST                /organizations/:orgId/ai-chat/ask
+  GET/POST            /organizations/:orgId/ai-chat/conversations
+  GET                 /organizations/:orgId/ai-chat/conversations/:conversationId/messages
+
+Permissions (v1 & v2):
+  GET                 /organizations/:orgId/permissions
+  GET                 /organizations/:orgId/users/:userId/my-permissions
+
+Webhooks (v1 & v2):
+  GET                 /organizations/:orgId/webhooks
+  POST                /organizations/:orgId/webhooks
+  GET                 /organizations/:orgId/webhooks/:webhookId
+  PUT/DELETE          /organizations/:orgId/webhooks/:webhookId
+  GET                 /organizations/:orgId/webhooks/:webhookId/deliveries
+  POST                /organizations/:orgId/webhooks/:webhookId/test
+
+API Keys (v1):
+  POST                /api-keys  (org-admin generates key with scopes)
+  GET                 /api-keys  (list org keys)
+  GET                 /api-keys/:keyId  (get key details)
+  POST                /api-keys/:keyId/revoke  (revoke key)
+  POST                /api-keys/validate  (validate incoming key)
+
+v2 Additional:
+  - Per-tier rate limiting by role (org_admin=200/min, ent_manager=100/min, staff=30/min, delivery_agent=20/min, guest=10/min)
+  - Deprecation headers on /api/v1/ endpoints (Deprecation, Sunset, Link)
+  - Input sanitization (XSS protection on all string fields)
+  - Enhanced pool tuning (max=20, idleTimeout=30s, connectTimeout=2s)
+  - API Key Management (generate, list, validate, revoke keys)
+
+## Pool Configuration (db.js)
+
+| Setting | Value | Purpose |
+|---------|-------|---------|
+| `max` | 20 | Max concurrent client connections |
+| `idleTimeoutMillis` | 30000 | Close idle connections after 30 seconds |
+| `connectionTimeoutMillis` | 2000 | Fail after 2s if unable to establish connection |
+| `idleTimeoutMillis` | configurable via `PG_IDLE_TIMEOUT` env var |
+| `connectionTimeoutMillis` | configurable via `PG_CONNECTION_TIMEOUT` env var |
+
+## Environment Variables (reference, not values)
+
+| Variable | Purpose | Example |
+|----------|---------|---------|
+| `PORT` | Server port | 3000 |
+| `DB_HOST` | PostgreSQL host | localhost |
+| `DB_PORT` | PostgreSQL port | 5432 |
+| `DB_USER` | Database user | postgres |
+| `DB_PASSWORD` | Database password | (required) |
+| `DB_NAME` | Database name | delivery_management |
+| `PG_POOL_MAX` | Pool max connections | 20 |
+| `PG_IDLE_TIMEOUT` | Idle timeout ms | 30000 |
+| `PG_CONNECTION_TIMEOUT` | Connect timeout ms | 2000 |
+| `CORS_ORIGIN` | Allowed CORS origin | http://localhost:3000 |
+| `NODE_ENV` | Environment mode | development |
+| `JWT_SECRET` | JWT token signing key | (required, random string) |
+
+## Deployment Checklist
+
+- [ ] PostgreSQL running with `pgcrypto` extension
+- [ ] Migration files applied (`001_auth_refactor.sql`, `002_password_reset_refresh_tokens.sql`, `003_api_keys.sql`)
+- [ ] `.env` file created with all required variables
+- [ ] `JWT_SECRET` set to a secure random string
+- [ ] `PG_POOL_MAX`, `PG_IDLE_TIMEOUT`, `PG_CONNECTION_TIMEOUT` configured
+- [ ] `CORS_ORIGIN` set to frontend domain (or `*` for development)
+- [ ] Firewall allows inbound traffic on port 3000
+- [ ] SSL/TLS configured for production HTTPS
+- [ ] Backup strategy for PostgreSQL data
+- [ ] Monitoring/health checks configured
+- [ ] Rate limiting verified per role
+- [ ] XSS sanitization tested (all string fields)
+- [ ] API keys tested (generate, validate, revoke)
+- [ ] Swagger docs available at `/api-docs`
+- [ ] Bruno collection (`bruno/delivery-management.bruno.json`) for API testing
+- [ ] Features log (`features-tracking/`) updated
+
+## Common Issues
+
+1. **Connection refused to PostgreSQL**: Verify `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, and `DB_NAME` in `.env`
+2. **JWT verification fails**: Verify `JWT_SECRET` is consistent across restarts
+3. **CORS errors**: Set `CORS_ORIGIN` to match your frontend domain
+4. **Unique constraint violations**: Ensure org_code (100-999) and ent_code (1-999) are unique per org
+5. **Token expired quickly**: Verify `JWT_EXPIRES_IN` env var (default: 24h)
+6. **Refresh token rotation issues**: Ensure `rotateRefreshToken` is called properly
+7. **Password reset tokens invalid**: Verify `password_reset_tokens` table is populated correctly
+8. **XSS not stripping HTML**: Verify `sanitize()` is called on all incoming string fields
+9. **Pool exhaustion**: Increase `PG_POOL_MAX` if approaching 20 concurrent connections
+10. **Connection timeout errors**: Increase `PG_CONNECTION_TIMEOUT` if behind a proxy or slow network
+11. **API key not valid**: Ensure key hash is SHA-256 encoded and matches database
+
+## Version History
+
+- **v1.0.0** (2026-09-17): Initial release with auth, org/ent codes, membership codes, password reset, refresh tokens, role_permissions, audit_logs, webhooks, AI conversation history, 6-digit codes, global unique email, API v1+v2 versioning, per-tier rate limiting, XSS sanitization, pool tuning, API key management, soft deletes

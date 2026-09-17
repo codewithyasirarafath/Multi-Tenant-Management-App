@@ -1,0 +1,16 @@
+Features implemented on 2026-09-17 14:30:00
+
+1. API Versioning (v1 + v2 with deprecation headers)
+2. Per-tier Rate Limiting by role (org_admin, ent_manager, staff, delivery_agent, guest)
+3. Password Reset Flow (tokens, reset links, password change)
+4. Refresh Token Rotation (secure token rotation with revocation)
+5. Role-Based Permissions (role_permissions table)
+6. Audit Logging (audit_logs table + middleware)
+7. Webhook Support (subscriptions + event triggering)
+8. AI Conversation History (conversations + messages tables)
+9. 6-Digit Membership Codes (org_code*1000+ent_code)
+10. Global Unique Email (users table, no org_id)
+11. Input Sanitization (XSS protection via html-sanitize-xss utility)
+12. Database Pool Tuning (pg pool: max=20, idleTimeout=30s, connectTimeout=2s)
+13. API Key Management (org-admin generated keys with permission scopes)
+14. Soft Deletes infrastructure (deleted_at columns on key tables)
