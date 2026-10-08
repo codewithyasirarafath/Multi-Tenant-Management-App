@@ -232,6 +232,161 @@ export const schemas = {
     }),
   },
 
+  inventory: {
+    create: z.object({
+      body: z.object({
+        entId: z.string().uuid().optional(),
+        name: z.string().min(1).max(200),
+        sku: z.string().min(1).max(50),
+        description: z.string().max(500).optional(),
+        unit: z.string().min(1).max(20).default('piece'),
+        costPrice: z.number().min(0).optional(),
+        salePrice: z.number().min(0).optional(),
+        trackInventory: z.boolean().default(true),
+        minStockLevel: z.number().int().min(1).default(5),
+        maxStockLevel: z.number().int().min(1).default(100),
+      }),
+      params: z.object({
+        orgId: z.string().uuid(),
+      }),
+    }),
+    update: z.object({
+      body: z.object({
+        entId: z.string().uuid().optional(),
+        name: z.string().min(1).max(200).optional(),
+        sku: z.string().min(1).max(50).optional(),
+        description: z.string().max(500).optional(),
+        unit: z.string().min(1).max(20).optional(),
+        costPrice: z.number().min(0).optional(),
+        salePrice: z.number().min(0).optional(),
+        trackInventory: z.boolean().optional(),
+        minStockLevel: z.number().int().min(1).optional(),
+        maxStockLevel: z.number().int().min(1).optional(),
+      }),
+      params: z.object({
+        orgId: z.string().uuid(),
+        id: z.string().uuid(),
+      }),
+    }),
+    list: z.object({
+      params: z.object({
+        orgId: z.string().uuid(),
+      }),
+      query: z.object({
+        limit: z.coerce.number().int().min(1).max(100).default(50),
+        offset: z.coerce.number().int().min(0).default(0),
+        isActive: z.boolean().optional(),
+        entId: z.string().uuid().optional(),
+      }),
+    }),
+  },
+
+  customer: {
+    create: z.object({
+      body: z.object({
+        entId: z.string().uuid().optional(),
+        name: z.string().min(1).max(150),
+        email: z.string().email().optional(),
+        mobile: z.string().min(10).max(20).regex(/^\+?[\d\s-]+$/).optional(),
+        address: z.string().max(500).optional(),
+      }),
+      params: z.object({
+        orgId: z.string().uuid(),
+      }),
+    }),
+    update: z.object({
+      body: z.object({
+        entId: z.string().uuid().optional(),
+        name: z.string().min(1).max(150).optional(),
+        email: z.string().email().optional(),
+        mobile: z.string().min(10).max(20).regex(/^\+?[\d\s-]+$/).optional(),
+        address: z.string().max(500).optional(),
+      }),
+      params: z.object({
+        orgId: z.string().uuid(),
+        id: z.string().uuid(),
+      }),
+    }),
+    list: z.object({
+      params: z.object({
+        orgId: z.string().uuid(),
+      }),
+      query: z.object({
+        limit: z.coerce.number().int().min(1).max(100).default(50),
+        offset: z.coerce.number().int().min(0).default(0),
+        isActive: z.boolean().optional(),
+        entId: z.string().uuid().optional(),
+      }),
+    }),
+  },
+
+  invoicing: {
+    create: z.object({
+      body: z.object({
+        deliveryId: z.string().uuid().optional(),
+        customerId: z.string().uuid().optional(),
+        entId: z.string().uuid().optional(),
+        invoiceNumber: z.string().min(1).max(50),
+        subtotal: z.number().min(0).default(0),
+        tax: z.number().min(0).default(0),
+        total: z.number().min(0).default(0),
+        dueDate: z.string().datetime().optional(),
+        notes: z.string().max(500).optional(),
+      }),
+      params: z.object({
+        orgId: z.string().uuid(),
+      }),
+    }),
+    update: z.object({
+      body: z.object({
+        status: z.enum(['pending', 'paid', 'overdue', 'cancelled', 'void']).optional(),
+        subtotal: z.number().min(0).optional(),
+        tax: z.number().min(0).optional(),
+        total: z.number().min(0).optional(),
+        notes: z.string().max(500).optional(),
+        dueDate: z.string().datetime().optional(),
+      }),
+      params: z.object({
+        orgId: z.string().uuid(),
+        id: z.string().uuid(),
+      }),
+    }),
+    list: z.object({
+      params: z.object({
+        orgId: z.string().uuid(),
+      }),
+      query: z.object({
+        limit: z.coerce.number().int().min(1).max(100).default(50),
+        offset: z.coerce.number().int().min(0).default(0),
+        status: z.enum(['pending', 'paid', 'overdue', 'cancelled', 'void']).optional(),
+        customerId: z.string().uuid().optional(),
+      }),
+    }),
+  },
+
+  notification: {
+    list: z.object({
+      params: z.object({
+        userId: z.string().uuid(),
+        orgId: z.string().uuid(),
+      }),
+      query: z.object({
+        limit: z.coerce.number().int().min(1).max(100).default(50),
+        offset: z.coerce.number().int().min(0).default(0),
+        type: z.string().optional(),
+        read: z.boolean().optional(),
+      }),
+    }),
+    markRead: z.object({
+      body: z.object({
+        notificationId: z.string().uuid(),
+      }),
+      params: z.object({
+        userId: z.string().uuid(),
+      }),
+    }),
+  },
+
   auth: {
     login: z.object({
       body: z.object({
@@ -284,6 +439,20 @@ export const schemas = {
       }),
       params: z.object({
         orgId: z.string().uuid(),
+      }),
+    }),
+  },
+
+  apiKey: {
+    generate: z.object({
+      body: z.object({
+        name: z.string().min(1).max(100),
+        permissionScopes: z.array(z.string()).optional(),
+      }),
+    }),
+    validate: z.object({
+      body: z.object({
+        key: z.string().min(1),
       }),
     }),
   },

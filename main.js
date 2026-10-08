@@ -14,6 +14,10 @@ import authRoutes from "./routes/authRoutes.js";
 import permissionRoutes from "./routes/permissionRoutes.js";
 import webhookRoutes from "./routes/webhookRoutes.js";
 import apiKeyRoutes from "./routes/apiKeyRoutes.js";
+import inventoryRoutes from "./routes/inventoryRoutes.js";
+import customerRoutes from "./routes/customerRoutes.js";
+import invoicingRoutes from "./routes/invoicingRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 import {
   globalRateLimiter,
   authRateLimiter,
@@ -58,6 +62,10 @@ app.use("/api/v1/organizations/:orgId/deliveries", createOrgScopedLimiter(100, 6
 app.use("/api/v1/organizations/:orgId/ai-chat", createOrgScopedLimiter(50, 60 * 1000), aiChatRoutes);
 app.use("/api/v1/organizations/:orgId/webhooks", createOrgScopedLimiter(50, 60 * 1000), webhookRoutes);
 app.use("/api/v1/api-keys", apiRateLimiter, apiKeyRoutes);
+app.use("/api/v1/organizations/:orgId/inventory", apiRateLimiter, inventoryRoutes);
+app.use("/api/v1/organizations/:orgId/customers", apiRateLimiter, customerRoutes);
+app.use("/api/v1/organizations/:orgId/invoicing", apiRateLimiter, invoicingRoutes);
+app.use("/api/v1/organizations/:orgId/notifications", apiRateLimiter, notificationRoutes);
 
 // v2 Routes (new with per-tier rate limiting)
 app.use("/api/v2/auth", authRateLimiter, authRoutes);

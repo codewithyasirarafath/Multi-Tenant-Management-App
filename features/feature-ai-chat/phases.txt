@@ -1,0 +1,30 @@
+Phase 1 — Validate & scope (2–4 weeks)
+
+Don't build all three vertical variants at once. Pick one — SaaS billing/subscription support is the natural starting point since you already understand that domain from building this platform. Talk to 5–10 potential buyers (SaaS companies with 500–10K tickets/month) before writing code: what's their current stack (Zendesk? Intercom? in-house?), what would make them trust an AI on customer-facing conversations, what would they actually pay for a resolved ticket versus a routed one.
+
+Decide the technical approach now, because it shapes everything after: retrieval-augmented generation (RAG) over the buyer's own knowledge base, not fine-tuning. RAG means no per-customer model training, near-instant onboarding, and clean tenant isolation — a new customer just uploads docs and starts working. Fine-tuning is slower, costlier per-customer, and unnecessary at this stage.
+
+Phase 2 — Build the core engine (4–8 weeks)
+
+This is the actual product, separate from your platform's internal ai-chat route:
+
+Ingestion pipeline — importer for help-center URLs, uploaded docs, and CSV exports of past tickets. Chunk, embed, store. You don't need new infra for this: Postgres with the pgvector extension handles embeddings fine at this scale, and it sits right next to the multi-tenant tables you already have.
+Retrieval + generation — embed the incoming question, pull the top-k relevant chunks filtered by org_id (same tenant-isolation pattern as everything else in your platform), build a prompt with that context, call the LLM API, stream the response.
+Embeddable widget — a small JS snippet the buyer pastes into their own site (Intercom-style), talking to your hosted API through a public "widget key" — a separate, more heavily rate-limited key class from your existing server-side API keys, since it's exposed client-side.
+Human handoff — low-confidence answers or an explicit "talk to a person" request fire a handoff_requested webhook event. This is the single most important design decision: don't try to replace the buyer's helpdesk, bolt onto it. Lower switching cost, easier sale.
+Headless API — the same engine exposed as a plain REST endpoint for buyers who want to build their own UI instead of your widget.
+Phase 3 — Productize the multi-tenancy (4–6 weeks)
+
+Here's where your existing architecture earns its keep. The buyer (a SaaS company) becomes an org row exactly like today — they get RBAC (admin configures the bot, agents just handle handoffs), your rate limiter's org-scoped limits are the plan-tier enforcement, and your billing module meters conversations resolved and ties straight to a Stripe plan.
+
+Build the self-serve loop: signup → connect knowledge base → get widget snippet + API key → test in a sandbox → go live, with no sales call required for the entry tier. Add a dashboard showing the buyer their deflection rate, CSAT, and — this part matters — their unanswered questions, which doubles as a knowledge-base gap report and makes the product feel indispensable rather than decorative.
+
+Phase 4 — Vertical specialization & integrations (4–6 weeks, can overlap with Phase 3)
+Tune prompt templates and retrieval behavior for your first vertical properly — curated example conversations, tone, escalation thresholds — before touching a second one.
+Ship native integrations with Zendesk, Intercom, and Slack. Most buyers already run one of these; showing up as an add-on inside their existing tool is the real differentiator over a generic chatbot, more than any model quality difference.
+Handle the questions every serious buyer will ask before signing: confirm data isolation (your RLS work from earlier pays off directly here), a lightweight SOC 2 readiness posture even before a full audit, and an option to redact PII from stored transcripts.
+Phase 5 — Launch, prove ROI, scale (ongoing)
+
+Run a beta with 5–10 design partners at a discount in exchange for real deflection-rate numbers — that data becomes your actual sales pitch, more persuasive than any feature list. Then open self-serve signup with usage-based pricing (buyers think in "cost per ticket deflected," so price close to that mental model rather than a flat seat fee).
+
+Two scale concerns that are specific to this product, unlike the rest of your platform: cache frequent question/answer pairs to cut LLM API cost, and actively monitor per-tenant token spend against what that tenant is paying you — LLM tokens are a real variable cost that most SaaS features don't have, and it's the easiest way to accidentally lose money on your biggest customers.
