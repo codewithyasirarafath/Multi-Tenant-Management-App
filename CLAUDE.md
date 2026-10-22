@@ -37,23 +37,54 @@ from ever seeing another tenant's data. Auth layer extracts `orgId` from verifie
 
 **6-Digit Membership Code**: Each user membership = `org_code * 1000 + ent_code` (000 if no entity). Example: user in org 123 (no entity) and org 124 entity 789 → `[123000, 124789]`. Returned on login/register and via `POST /api/v1/auth/membership-codes`.
 
-## Folder structure (MVC-ish, applies to every module)
+## Folder structure (feature-based architecture)
+
+Every module owns its full vertical slice under `src/<module>/`. Shared
+cross-cutting concerns live in `src/shared/`. `main.js` at the repo root
+only wires features together.
 
 ```
-config/db.js              → single shared pg Pool, imported everywhere
-middleware/               → cross-cutting concerns
-  auth.js                 → JWT verify, membership loading, access control helpers
-  validation.js           → zod schemas + validate() middleware
-  rateLimit.js            → express-rate-limit configs
-  errorHandler.js         → global error handler + asyncHandler
-  logger.js               → morgan + request ID
-models/*.js               → raw SQL queries only, no req/res knowledge
-controllers/*.js          → req/res handling, calls models, uses asyncHandler
-routes/*.js               → maps HTTP verb+path to controller, uses validation middleware
-main.js                   → wires everything together, mounts routes in hierarchy order
-utils/errors.js           → custom error classes + Postgres error code mapping
-services/                 → business logic (AI chat, etc.)
-migrations/               → SQL migration files
+src/
+  <module>/                 → one folder per feature (see modules below)
+    routes.js               → maps HTTP verb+path to controller, uses validation middleware
+    controller.js           → req/res handling, calls models, uses asyncHandler
+    model.js                → raw SQL queries only, no req/res knowledge
+  auth/                     → register/login/me/membership-codes
+  organizations/            → org CRUD
+  entities/                 → entity CRUD within an org
+  users/                    → user CRUD
+  roles/                    → role CRUD
+  memberships/              → user → org → entity → role assignments (userRoles.model.js = legacy, deprecated)
+  permissions/              → permission checks + role_permissions
+  deliveries/               → the core business data module
+  inventory/                → products + stock levels + inventory movements
+  customers/                → customer records
+  invoicing/                → invoices + payments
+  notifications/            → user notifications + org-level alerts
+  webhooks/                 → webhook subscriptions + delivery log
+  api-keys/                 → API key management (controller lives in routes.js)
+  ai-chat/                  → AI assistant (routes, controller, model, service.js, query-service.js)
+  audit/                    → audit logging (middleware.js + model.js)
+  shared/
+    middleware/
+      auth.js               → JWT verify, membership loading, access control helpers
+      validation.js         → zod schemas + validate() middleware (all modules' schemas)
+      rateLimit.js          → express-rate-limit configs
+      errorHandler.js       → global error handler + asyncHandler
+      logger.js             → morgan + request ID
+      index.js              → barrel re-export
+    config/
+      db.js                 → single shared pg Pool, imported everywhere
+      swagger.js            → OpenAPI spec (scans ./src/**/*.js)
+    utils/
+      errors.js             → custom error classes + Postgres error code mapping
+      sanitize.js           → XSS sanitization (mutates req.query/params in place — Express 5 getters)
+main.js                     → wires everything together, mounts routes in hierarchy order
+migrations/                 → SQL migration files (run with `npm run migrate`)
+scripts/
+  migrate.js                → runs all migrations/*.sql in order
+  refactor-to-src.mjs       → one-time migration to feature-based structure (can delete)
+bruno/                      → API test collection
 ```
 
 ## Current route map (all prefixed with `/api/v1`)
@@ -84,13 +115,23 @@ GET                 /organizations/:orgId/deliveries/track/:trackingNumber
 GET/PUT/DELETE      /organizations/:orgId/deliveries/:id
 PATCH               /organizations/:orgId/deliveries/:id/status
 
+GET/POST/PUT/DELETE /organizations/:orgId/inventory   → products + stock
+GET/POST/PUT/DELETE /organizations/:orgId/customers   → customer records
+GET/POST/PUT        /organizations/:orgId/invoicing   → invoices (+ payments per invoice)
+GET                 /organizations/:orgId/notifications
+PATCH               /organizations/:orgId/notifications/mark-read
+GET                 /organizations/:orgId/notifications/alerts
+GET/POST            /organizations/:orgId/permissions
+GET/POST/DELETE     /organizations/:orgId/webhooks    → webhook subscriptions (+ revoke)
+GET/POST            /api-keys                          → API key management (org-scoped)
+
 POST                /organizations/:orgId/ai-chat/ask
 ```
 
 ## Database
 
-- Schema file: `multitenant-schema.sql` + `migrations/001_auth_refactor.sql`
-- Key tables: `organizations`, `entities`, `users`, `roles`, `user_memberships`, `deliveries`
+- Schema file: `multitenant-schema.sql` + `migrations/` (run with `npm run migrate`)
+- Key tables: `organizations`, `entities`, `users`, `roles`, `user_memberships`, `deliveries`, `products`, `inventory`, `inventory_movements`, `customers`, `invoices`, `payments`, `notifications`, `alerts`, `permissions`, `role_permissions`, `audit_logs`, `webhook_subscriptions`, `webhook_deliveries`, `api_keys`, `ai_conversations`, `ai_messages`, `password_reset_tokens`, `refresh_tokens`
 - Deliveries `status` constrained in app to: `pending`, `in_transit`, `out_for_delivery`, `delivered`, `cancelled`
 - All primary keys are UUIDs (`gen_random_uuid()`, needs `pgcrypto` extension)
 - Uniqueness scoped per-org: `org_code` (global), `ent_code` (per org), `email` (global), `mobile` (global), tracking_number (per org)
@@ -113,7 +154,7 @@ A conversational assistant that answers questions about delivery data and
 basic questions about the app itself - implemented with **rule-based keyword
 matching, no external API, no cost, no internet dependency.**
 
-**How it works (`services/aiChatService.js`):**
+**How it works (`src/ai-chat/service.js`):**
 
 1. The latest user message is lowercased and scanned for known patterns:
    - status keywords (pending, in transit, delivered, etc.)
@@ -129,7 +170,7 @@ matching, no external API, no cost, no internet dependency.**
 
 **Trade-off, stated honestly:** this only understands the phrasings we've
 explicitly coded for. "how many are pending" works; something oddly phrased
-or entirely novel won't. If you outgrow this, `services/aiChatService.js`
+or entirely novel won't. If you outgrow this, `src/ai-chat/service.js`
 is the only file to swap out - the controller, routes, and conversation
 history model don't change - and you could plug in Claude, a local model
 via Ollama, or anything else that can produce a `runChatTurn(orgId, history)`
@@ -154,11 +195,12 @@ POST /api/v1/organizations/:orgId/ai-chat/ask
 
 ## Roadmap / known gaps
 
-- [ ] Password reset flow
-- [ ] Refresh token rotation
-- [ ] Permissions table (`role_permissions`) if role-name checks in controllers become insufficient
-- [ ] API versioning strategy for breaking changes (currently v1 only)
-- [ ] OpenAPI/Swagger documentation
-- [ ] AI Conversation history persistence (conversations/messages tables)
-- [ ] Webhook support for delivery status updates
-- [ ] Audit logging for sensitive operations
+- [ ] Password reset flow (schemas + tokens table exist, email delivery missing)
+- [ ] Refresh token rotation (tokens table exists, rotation logic incomplete)
+- [x] Permissions table (`role_permissions`) — seeded with per-role permissions
+- [ ] API versioning strategy for breaking changes (v1 deprecated with Sunset header, v2 active)
+- [x] OpenAPI/Swagger documentation (`/api-docs`, spec scans `./src/**/*.js`)
+- [x] AI Conversation history persistence (`ai_conversations`/`ai_messages` tables + model)
+- [x] Webhook support for delivery status updates (subscriptions + delivery log + retry)
+- [x] Audit logging for sensitive operations (`audit_logs` table + middleware)
+- [ ] Frontend (planned `frontend/` folder — React + Vite, 5 business modules)

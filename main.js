@@ -2,32 +2,33 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
-import pool from "./config/db.js";
-import organizationRoutes from "./routes/organizationRoutes.js";
-import entityRoutes from "./routes/entityRoutes.js";
-import userRoutes from "./routes/userRoutes.js";
-import roleRoutes from "./routes/roleRoutes.js";
-import userRoleRoutes from "./routes/userRoleRoutes.js";
-import deliveryRoutes from "./routes/deliveryRoutes.js";
-import aiChatRoutes from "./routes/aiChatRoutes.js";
-import authRoutes from "./routes/authRoutes.js";
-import permissionRoutes from "./routes/permissionRoutes.js";
-import webhookRoutes from "./routes/webhookRoutes.js";
-import apiKeyRoutes from "./routes/apiKeyRoutes.js";
-import inventoryRoutes from "./routes/inventoryRoutes.js";
-import customerRoutes from "./routes/customerRoutes.js";
-import invoicingRoutes from "./routes/invoicingRoutes.js";
-import notificationRoutes from "./routes/notificationRoutes.js";
+import pool from "./src/shared/config/db.js";
+import organizationRoutes from "./src/organizations/routes.js";
+import entityRoutes from "./src/entities/routes.js";
+import userRoutes from "./src/users/routes.js";
+import roleRoutes from "./src/roles/routes.js";
+import userRoleRoutes from "./src/memberships/routes.js";
+import deliveryRoutes from "./src/deliveries/routes.js";
+import aiChatRoutes from "./src/ai-chat/routes.js";
+import authRoutes from "./src/auth/routes.js";
+import permissionRoutes from "./src/permissions/routes.js";
+import webhookRoutes from "./src/webhooks/routes.js";
+import apiKeyRoutes from "./src/api-keys/routes.js";
+import inventoryRoutes from "./src/inventory/routes.js";
+import customerRoutes from "./src/customers/routes.js";
+import invoicingRoutes from "./src/invoicing/routes.js";
+import notificationRoutes from "./src/notifications/routes.js";
 import {
   globalRateLimiter,
   authRateLimiter,
   apiRateLimiter,
   createOrgScopedLimiter,
-} from "./middleware/rateLimit.js";
-import { sanitizeBody, sanitizeParams, sanitizeQuery } from "./utils/sanitize.js";
-import { requestLogger, requestIdMiddleware } from "./middleware/logger.js";
-import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
-import { swaggerSpec } from "./config/swagger.js";
+} from "./src/shared/middleware/rateLimit.js";
+import { sanitizeBody, sanitizeParams, sanitizeQuery } from "./src/shared/utils/sanitize.js";
+import { requestLogger, requestIdMiddleware } from "./src/shared/middleware/logger.js";
+import { errorHandler, notFoundHandler } from "./src/shared/middleware/errorHandler.js";
+import { authMiddleware, requireOrgAccess } from "./src/shared/middleware/auth.js";
+import { swaggerSpec } from "./src/shared/config/swagger.js";
 import swaggerUi from "swagger-ui-express";
 
 dotenv.config();
@@ -49,6 +50,12 @@ app.use(globalRateLimiter);
 app.use(sanitizeBody());
 app.use(sanitizeParams());
 app.use(sanitizeQuery());
+
+// --- Auth for all org-scoped routes (prefix match covers every sub-mount) ---
+app.use("/api/v1/organizations", authMiddleware);
+app.use("/api/v1/organizations/:orgId", requireOrgAccess);
+app.use("/api/v2/organizations", authMiddleware);
+app.use("/api/v2/organizations/:orgId", requireOrgAccess);
 
 // v1 Routes with org-scoped rate limiting
 app.use("/api/v1/auth", authRateLimiter, authRoutes);
@@ -78,6 +85,10 @@ app.use("/api/v2/organizations/:orgId/users/:userId/memberships", apiRateLimiter
 app.use("/api/v2/organizations/:orgId/deliveries", createOrgScopedLimiter(150, 60 * 1000), deliveryRoutes);
 app.use("/api/v2/organizations/:orgId/ai-chat", createOrgScopedLimiter(100, 60 * 1000), aiChatRoutes);
 app.use("/api/v2/organizations/:orgId/webhooks", createOrgScopedLimiter(100, 60 * 1000), webhookRoutes);
+app.use("/api/v2/organizations/:orgId/inventory", apiRateLimiter, inventoryRoutes);
+app.use("/api/v2/organizations/:orgId/customers", apiRateLimiter, customerRoutes);
+app.use("/api/v2/organizations/:orgId/invoicing", apiRateLimiter, invoicingRoutes);
+app.use("/api/v2/organizations/:orgId/notifications", apiRateLimiter, notificationRoutes);
 
 // Deprecation notice for v1
 app.use((req, res, next) => {

@@ -41,12 +41,14 @@ ios/DerivedData/
 # TypeScript
 *.tsbuildinfo
 
-# Environment files
+# Environment variables and secrets
+.env.*
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+!.env.example
 
 # Expo / EAS
 .eas/
