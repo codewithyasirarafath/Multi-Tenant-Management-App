@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import { ValidationError } from '../utils/errors.js';
 
+// URL query params are always strings — coerce "true"/"false" to booleans.
+// (z.boolean() alone rejects the string "false", breaking ?isResolved=false)
+const queryBool = z
+  .enum(['true', 'false'])
+  .transform((v) => v === 'true')
+  .optional();
+
 export const validate = (schema) => (req, res, next) => {
   try {
     const result = schema.safeParse({
@@ -12,9 +19,9 @@ export const validate = (schema) => (req, res, next) => {
     if (!result.success) {
       const errors = result.error.flatten();
       throw new ValidationError('Validation failed', {
-        body: errors.formErrors.fieldErrors.body,
-        query: errors.formErrors.fieldErrors.query,
-        params: errors.formErrors.fieldErrors.params,
+        body: errors.fieldErrors.body,
+        query: errors.fieldErrors.query,
+        params: errors.fieldErrors.params,
       });
     }
 
@@ -169,6 +176,12 @@ export const schemas = {
         userId: z.string().uuid(),
       }),
     }),
+    codes: z.object({
+      params: z.object({
+        orgId: z.string().uuid(),
+        userId: z.string().uuid(),
+      }),
+    }),
   },
 
   delivery: {
@@ -275,7 +288,7 @@ export const schemas = {
       query: z.object({
         limit: z.coerce.number().int().min(1).max(100).default(50),
         offset: z.coerce.number().int().min(0).default(0),
-        isActive: z.boolean().optional(),
+        isActive: queryBool,
         entId: z.string().uuid().optional(),
       }),
     }),
@@ -320,7 +333,7 @@ export const schemas = {
       query: z.object({
         limit: z.coerce.number().int().min(1).max(100).default(50),
         offset: z.coerce.number().int().min(0).default(0),
-        isActive: z.boolean().optional(),
+        isActive: queryBool,
         entId: z.string().uuid().optional(),
       }),
     }),
@@ -402,7 +415,7 @@ export const schemas = {
         limit: z.coerce.number().int().min(1).max(100).default(50),
         offset: z.coerce.number().int().min(0).default(0),
         type: z.string().optional(),
-        read: z.boolean().optional(),
+        read: queryBool,
       }),
     }),
     unreadCount: z.object({
@@ -426,7 +439,7 @@ export const schemas = {
         entId: z.string().uuid().optional(),
         type: z.string().optional(),
         severity: z.enum(['low', 'medium', 'high', 'critical']).optional(),
-        isResolved: z.boolean().optional(),
+        isResolved: queryBool,
       }),
     }),
   },

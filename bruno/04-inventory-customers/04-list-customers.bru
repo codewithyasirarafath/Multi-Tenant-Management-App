@@ -1,0 +1,23 @@
+meta {
+  name: List Customers
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/organizations/{{orgId}}/customers
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+tests {
+  test("lists customers", function() {
+    expect(res.getStatus()).to.equal(200);
+    const data = res.getBody();
+    expect(data.length).to.be.at.least(2);
+  });
+}

@@ -1,22 +1,24 @@
 import pool from "../shared/config/db.js";
 
 const getAllInvoices = async (orgId, { limit = 50, offset = 0, status, customerId, deliveryId } = {}) => {
-  const conditions = ["org_id = $1"];
+  // Conditions are qualified with `i.` because this query joins customers
+  // and deliveries, which also expose org_id/status/delivery_id columns.
+  const conditions = ["i.org_id = $1"];
   const params = [orgId];
   let idx = 2;
 
   if (status) {
-    conditions.push(`status = $${idx}`);
+    conditions.push(`i.status = $${idx}`);
     params.push(status);
     idx++;
   }
   if (customerId) {
-    conditions.push(`customer_id = $${idx}`);
+    conditions.push(`i.customer_id = $${idx}`);
     params.push(customerId);
     idx++;
   }
   if (deliveryId) {
-    conditions.push(`delivery_id = $${idx}`);
+    conditions.push(`i.delivery_id = $${idx}`);
     params.push(deliveryId);
     idx++;
   }
@@ -82,7 +84,7 @@ const recordPayment = async (orgId, { invoiceId, amount, paymentMethod, transact
 
     // Update invoice status based on total paid vs total due
     const invoiceCheck = await client.query(
-      `SELECT total, due_date, COALESCE((SELECT SUM(amount) FROM payments WHERE invoice_id = $1 AND status = 'completed'), 0) AS paid_total
+      `SELECT total, due_date, paid_at, COALESCE((SELECT SUM(amount) FROM payments WHERE invoice_id = $1 AND status = 'completed'), 0) AS paid_total
        FROM invoices WHERE id = $1 AND org_id = $2`,
       [invoiceId, orgId],
     );
@@ -98,9 +100,15 @@ const recordPayment = async (orgId, { invoiceId, amount, paymentMethod, transact
       newInvoiceStatus = 'overdue';
     }
 
+    // paid_at is computed here (not via CASE on the parameter) — reusing the
+    // status parameter in a text comparison makes Postgres deduce conflicting
+    // types for it (42P08).
+    const paidAt =
+      newInvoiceStatus === "paid" ? new Date() : invoiceCheck.rows[0].paid_at;
+
     const invoiceResult = await client.query(
-      `UPDATE invoices SET status = $1, paid_at = CASE WHEN $1 = 'paid' THEN NOW() ELSE paid_at END, updated_at = NOW() WHERE id = $2 AND org_id = $3 RETURNING *`,
-      [newInvoiceStatus, invoiceId, orgId],
+      `UPDATE invoices SET status = $1, paid_at = $2, updated_at = NOW() WHERE id = $3 AND org_id = $4 RETURNING *`,
+      [newInvoiceStatus, paidAt, invoiceId, orgId],
     );
 
     await client.query('COMMIT');

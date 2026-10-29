@@ -1,4 +1,5 @@
 import * as organizationModel from "./model.js";
+import * as membershipModel from "../memberships/model.js";
 import { asyncHandler } from "../shared/middleware/errorHandler.js";
 
 const getOrganizations = asyncHandler(async (req, res) => {
@@ -15,6 +16,11 @@ const getOrganization = asyncHandler(async (req, res) => {
 const addOrganization = asyncHandler(async (req, res) => {
   const { name, slug, orgCode } = req.validated.body;
   const newOrg = await organizationModel.createOrganization(name, slug, orgCode);
+  // Onboarding: the creator becomes the org's first org_admin, otherwise
+  // they could never access the org they just created.
+  if (req.auth?.userId) {
+    await membershipModel.assignMembershipAsOrgAdmin(req.auth.userId, newOrg.id);
+  }
   res.status(201).json(newOrg);
 });
 

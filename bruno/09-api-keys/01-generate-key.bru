@@ -1,0 +1,39 @@
+meta {
+  name: Generate API Key (org admin)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/organizations/{{orgId}}/api-keys
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+script:pre-request {
+  req.setBody({
+    name: `Bruno Key ${bru.getEnvVar("runTag")}`,
+    permissionScopes: ["deliveries:read"],
+  });
+}
+
+script:post-response {
+  const data = res.getBody();
+  // The plain key is shown exactly once — keep it for the validate step.
+  bru.setEnvVar("generatedApiKey", data.key);
+  bru.setEnvVar("generatedApiKeyId", "");
+}
+
+tests {
+  test("key generated with once-only plain value", function() {
+    expect(res.getStatus()).to.equal(201);
+    const data = res.getBody();
+    expect(data.key).to.be.a("string");
+    expect(data.key.startsWith("ak_")).to.equal(true);
+    expect(data.prefix).to.be.a("string");
+  });
+}

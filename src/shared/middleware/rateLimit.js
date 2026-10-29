@@ -25,9 +25,6 @@ const createRateLimiter = (options = {}) => {
     statusCode: 429,
     standardHeaders: true,
     legacyHeaders: false,
-    handler: (req, res, next) => {
-      next(new Error("Too many requests, please try again later"));
-    },
     skip: options.skip || (() => false),
     keyGenerator: (req) => {
       // Try to get role key from auth
@@ -39,24 +36,24 @@ const createRateLimiter = (options = {}) => {
 
 // Global limiter - same for all
 export const globalRateLimiter = createRateLimiter({
-  max: 200,
+  max: Number(process.env.GLOBAL_RATE_LIMIT) || 200,
   windowMs: 15 * 60 * 1000,
 });
 
 // Auth limiter - stricter for auth endpoints
 export const authRateLimiter = createRateLimiter({
-  max: 10,
+  max: Number(process.env.AUTH_RATE_LIMIT) || 10,
   windowMs: 15 * 60 * 1000,
   roleKey: "role_name", // use role_name from req.auth
 });
 
 // API limiter - per-org based
 export const apiRateLimiter = createRateLimiter({
-  max: 60,
+  max: Number(process.env.API_RATE_LIMIT) || 60,
   windowMs: 60 * 1000,
   roleKey: "role_name",
   roleLimits: {
-    default: 60,
+    default: Number(process.env.API_RATE_LIMIT) || 60,
     org_admin: 200,
     ent_manager: 100,
     staff: 30,

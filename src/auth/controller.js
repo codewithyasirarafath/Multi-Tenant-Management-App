@@ -92,12 +92,13 @@ const requestPasswordReset = asyncHandler(async (req, res) => {
 
   const { token, expiresAt } = await authModel.createPasswordResetToken(user.id);
 
-  // TODO: Send email with reset link containing token
-  // For now, return token in response (dev only)
-  res.status(200).json({ 
+  // TODO: Send email with reset link containing token (roadmap item).
+  // Until then, expose the token only outside production so the flow is
+  // testable; production responses never include it.
+  const devToken = process.env.NODE_ENV === "development" ? token : undefined;
+  res.status(200).json({
     message: "If the email exists, a reset link has been sent",
-    devToken: token, // Remove in production
-    expiresAt,
+    ...(devToken ? { devToken, expiresAt } : {}),
   });
 });
 
@@ -139,14 +140,18 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   const { refreshToken } = req.validated.body;
 
   try {
-    const { token: newAccessToken, expiresAt } = await authModel.rotateRefreshToken(
+    const { token: newAccessToken, expiresAt, userId } = await authModel.rotateRefreshToken(
       refreshToken,
       req.headers["user-agent"],
       req.ip
     );
 
-    // Generate new access token
-    const user = await authModel.getUserById(req.auth?.userId);
+    // Generate new access token. NOTE: /token/refresh is unauthenticated —
+    // req.auth does not exist here; the rotated token's row carries the userId.
+    const user = await authModel.getUserById(userId);
+    if (!user) {
+      throw new UnauthorizedError("Invalid refresh token");
+    }
     const accessToken = generateToken({ userId: user.id, email: user.email });
 
     res.status(200).json({

@@ -1,0 +1,31 @@
+meta {
+  name: List Notifications
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/organizations/{{orgId}}/notifications
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+script:post-response {
+  const data = res.getBody();
+  // Prefer an unread notification; fall back to any (mark-read is idempotent)
+  const unread = data.find((n) => n.read === false);
+  const target = unread || data[0];
+  if (target) bru.setEnvVar("notificationId", target.id);
+}
+
+tests {
+  test("lists notifications", function() {
+    expect(res.getStatus()).to.equal(200);
+    const data = res.getBody();
+    expect(data.length).to.be.at.least(1);
+  });
+}

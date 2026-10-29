@@ -174,10 +174,11 @@ const rotateRefreshToken = async (oldToken, userAgent, ipAddress) => {
     }
     const userId = tokenResult.rows[0].user_id;
 
-    // Revoke old token
+    // Revoke old token (replaced_by_token_hash is set after the new token
+    // exists, in a second UPDATE below — same transaction).
     await client.query(
-      `UPDATE refresh_tokens SET revoked_at = NOW(), replaced_by_token_hash = $1 WHERE token_hash = $2`,
-      [hashToken(generateToken()), oldTokenHash], // placeholder, will update below
+      `UPDATE refresh_tokens SET revoked_at = NOW() WHERE token_hash = $1`,
+      [oldTokenHash],
     );
 
     // Create new token

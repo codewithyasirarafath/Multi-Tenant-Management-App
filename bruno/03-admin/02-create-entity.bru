@@ -1,0 +1,38 @@
+meta {
+  name: Create Entity
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/organizations/{{orgId}}/entities
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+script:pre-request {
+  const tag = bru.getEnvVar("runTag");
+  req.setBody({
+    name: `Branch ${tag}`,
+    code: `BR-${tag}`,
+  });
+}
+
+script:post-response {
+  const data = res.getBody();
+  bru.setEnvVar("entId", data.id);
+}
+
+tests {
+  test("entity created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  test("has ent_code", function() {
+    const data = res.getBody();
+    expect(data.ent_code).to.be.at.least(1);
+  });
+}

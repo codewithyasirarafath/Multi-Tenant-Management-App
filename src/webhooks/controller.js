@@ -3,6 +3,7 @@ import { asyncHandler } from "../shared/middleware/errorHandler.js";
 import { NotFoundError } from "../shared/utils/errors.js";
 
 const getWebhooks = asyncHandler(async (req, res) => {
+  const { orgId } = req.params;
   const { limit, offset } = req.validated.query;
   const webhooks = await webhookModel.getWebhookSubscriptions(orgId, { limit, offset });
   // Don't return secrets in list

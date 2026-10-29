@@ -1,0 +1,33 @@
+meta {
+  name: Create Webhook
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/organizations/{{orgId}}/webhooks
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+script:pre-request {
+  req.setBody({
+    url: "https://example.com/hooks/bruno-run",
+    events: ["delivery.created", "delivery.status_changed"],
+  });
+}
+
+script:post-response {
+  const data = res.getBody();
+  bru.setEnvVar("webhookId", data.id);
+}
+
+tests {
+  test("webhook created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

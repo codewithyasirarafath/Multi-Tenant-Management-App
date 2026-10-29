@@ -1,0 +1,36 @@
+meta {
+  name: Create User (org member)
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/organizations/{{orgId}}/users
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+script:pre-request {
+  const tag = bru.getEnvVar("runTag");
+  req.setBody({
+    firstName: "New",
+    lastName: `Member${tag}`,
+    mobile: `+1415556${String(1000 + (Number(tag) % 8999))}`,
+    email: `member.${tag}@acme.test`,
+  });
+}
+
+script:post-response {
+  const data = res.getBody();
+  bru.setEnvVar("newUserId", data.id);
+}
+
+tests {
+  test("user created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

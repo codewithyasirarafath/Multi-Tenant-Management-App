@@ -1,0 +1,25 @@
+meta {
+  name: Validate API Key (machine flow, no bearer)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api-keys/validate
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "key": "{{generatedApiKey}}"
+  }
+}
+
+tests {
+  test("machine key authenticates without bearer", function() {
+    expect(res.getStatus()).to.equal(200);
+    const data = res.getBody();
+    expect(data.orgId).to.equal(bru.getEnvVar("orgId"));
+  });
+}

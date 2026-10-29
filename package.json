@@ -1,21 +1,32 @@
 {
   "name": "learn-postgresql",
   "version": "1.0.0",
-  "description": "",
+  "description": "Multi-tenant delivery management API (Node.js + Express + PostgreSQL)",
   "main": "main.js",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node main.js",
     "dev": "node --watch main.js",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:api": "node scripts/bruno-env.mjs && cd bruno && bru run --env Local",
     "lint": "eslint .",
-    "migrate": "node scripts/migrate.js"
+    "check": "node scripts/check-all.mjs",
+    "check:imports": "node scripts/check-imports.mjs",
+    "check:org-scope": "node scripts/check-org-scope.mjs",
+    "db:up": "docker compose up -d postgres && node scripts/wait-for-db.mjs",
+    "db:down": "docker compose down",
+    "db:reset": "docker compose down -v && npm run db:up",
+    "migrate": "node scripts/migrate.js",
+    "seed": "node scripts/seed.js",
+    "setup": "node scripts/setup.mjs"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.125.0",
     "bcryptjs": "^3.0.3",
     "bullmq": "^6.3.6",
     "cors": "^2.8.6",
@@ -32,7 +43,9 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@usebruno/cli": "^4.3.0",
     "eslint": "^9.0.0",
+    "supertest": "^7.3.1",
     "vitest": "^2.0.0"
   }
 }

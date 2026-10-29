@@ -1,0 +1,28 @@
+meta {
+  name: Invalid Status (negative, expect 422)
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{baseUrl}}/organizations/{{orgId}}/deliveries/{{deliveryId}}/status
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+body:json {
+  {
+    "status": "flying_to_the_moon"
+  }
+}
+
+tests {
+  test("invalid status rejected", function() {
+    const status = res.getStatus();
+    expect(status === 400 || status === 422).to.equal(true);
+  });
+}

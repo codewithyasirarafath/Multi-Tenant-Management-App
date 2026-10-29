@@ -31,9 +31,11 @@ const getOrganizationByCode = async (orgCode) => {
 };
 
 const createOrganization = async (name, slug, orgCode) => {
+  // org_code is NOT NULL: auto-assign from the shared sequence when the
+  // caller doesn't provide one (001_auth_refactor created org_code_seq).
   const result = await pool.query(
-    "INSERT INTO organizations (name, slug, org_code) VALUES ($1, $2, $3) RETURNING *",
-    [name, slug, orgCode],
+    "INSERT INTO organizations (name, slug, org_code) VALUES ($1, $2, COALESCE($3, nextval('org_code_seq'))) RETURNING *",
+    [name, slug, orgCode || null],
   );
   return result.rows[0];
 };

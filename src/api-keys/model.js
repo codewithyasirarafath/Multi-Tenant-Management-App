@@ -2,19 +2,23 @@ import crypto from "crypto";
 import pool from "../shared/config/db.js";
 
 const generateApiKey = async (orgId, name, permissionScopes) => {
-  const keyHash = encode(crypto.randomBytes(40), 'hex');
+  // The plain key is returned exactly once (to be shown to the caller);
+  // only its SHA-256 hash is persisted, so a database leak cannot expose
+  // usable credentials. validateApiKey() hashes incoming keys for comparison.
+  const key = `ak_${crypto.randomBytes(24).toString("hex")}`;
+  const keyHash = crypto.createHash("sha256").update(key).digest("hex");
   const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000); // 90 days
 
   const result = await pool.query(
     `INSERT INTO api_keys (org_id, name, key_hash, permission_scopes, is_active, created_at, updated_at)
      VALUES ($1, $2, $3, $4, TRUE, NOW(), NOW())
-     RETURNING id, key_hash, created_at`,
+     RETURNING id, created_at`,
     [orgId, name, keyHash, permissionScopes || []]
   );
 
   return {
-    keyHash,
-    keyPrefix: keyHash.substring(0, 8),
+    key,
+    keyPrefix: key.substring(0, 11),
     name,
     permissionScopes: permissionScopes || [],
     expiresAt,
@@ -23,8 +27,10 @@ const generateApiKey = async (orgId, name, permissionScopes) => {
 };
 
 const listApiKeys = async (orgId) => {
+  // NOTE: key_hash is deliberately NOT selected — hashes must never leave
+  // the server (generate-once design; validateApiKey compares server-side).
   const result = await pool.query(
-    `SELECT ak.id, ak.name, ak.key_hash, ak.permission_scopes, ak.is_active, ak.created_at, o.name AS org_name
+    `SELECT ak.id, ak.name, ak.permission_scopes, ak.is_active, ak.created_at, o.name AS org_name
      FROM api_keys ak
      JOIN organizations o ON o.id = ak.org_id
      WHERE ak.org_id = $1 AND ak.is_active = TRUE AND o.is_active = TRUE
@@ -34,7 +40,6 @@ const listApiKeys = async (orgId) => {
   return result.rows.map(k => ({
     id: k.id,
     name: k.name,
-    keyHash: k.key_hash,
     permissionScopes: k.permission_scopes,
     isActive: k.is_active,
     createdAt: k.created_at,
@@ -44,7 +49,7 @@ const listApiKeys = async (orgId) => {
 
 const getApiKey = async (keyId, orgId) => {
   const result = await pool.query(
-    `SELECT ak.id, ak.org_id, ak.name, ak.key_hash, ak.permission_scopes, ak.is_active, ak.created_at, o.name AS org_name
+    `SELECT ak.id, ak.org_id, ak.name, ak.permission_scopes, ak.is_active, ak.created_at, o.name AS org_name
      FROM api_keys ak
      JOIN organizations o ON o.id = ak.org_id
      WHERE ak.id = $1 AND ak.org_id = $2 AND ak.is_active = TRUE AND o.is_active = TRUE`,
@@ -62,13 +67,16 @@ const revokeApiKey = async (keyId, orgId) => {
 };
 
 const validateApiKey = async (key) => {
-  // Hash the incoming key for comparison
-  const keyHash = encode(crypto.createHash('sha256').update(key).digest('hex'), 'hex');
+  // Hash the incoming key for comparison (same scheme as generateApiKey).
+  // Revoked (is_active = FALSE) or expired keys must not authenticate.
+  const keyHash = crypto.createHash("sha256").update(key).digest("hex");
   const result = await pool.query(
-    `SELECT ak.id, ak.org_id, ak.permission_scopes, ak.is_active, o.is_active AS org_active
+    `SELECT ak.id, ak.org_id, ak.permission_scopes, ak.is_active
      FROM api_keys ak
      JOIN organizations o ON o.id = ak.org_id
-     WHERE ak.key_hash = $1 AND o.is_active = TRUE`,
+     WHERE ak.key_hash = $1 AND ak.is_active = TRUE
+       AND (ak.expires_at IS NULL OR ak.expires_at > NOW())
+       AND o.is_active = TRUE`,
     [keyHash]
   );
   return result.rows;

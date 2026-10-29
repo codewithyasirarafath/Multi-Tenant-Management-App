@@ -49,8 +49,24 @@ const getMembershipById = async (membershipId, userId) => {
   return result.rows[0];
 };
 
-const assignMembership = async (userId, orgId, roleId, entId) => {
+// Onboarding helper: grants the org creator the system-wide org_admin role.
+const assignMembershipAsOrgAdmin = async (userId, orgId) => {
+  const roleResult = await pool.query(
+    `SELECT id FROM roles WHERE org_id IS NULL AND name = 'org_admin' LIMIT 1`,
+  );
+  const roleId = roleResult.rows[0]?.id;
+  if (!roleId) return null;
   const result = await pool.query(
+    `INSERT INTO user_memberships (user_id, org_id, role_id)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (user_id, org_id, ent_id, role_id) DO NOTHING
+     RETURNING *`,
+    [userId, orgId, roleId],
+  );
+  return result.rows[0] || null;
+};
+
+const assignMembership = async (userId, orgId, roleId, entId) => {  const result = await pool.query(
     `INSERT INTO user_memberships (user_id, org_id, role_id, ent_id)
      VALUES ($1, $2, $3, $4) RETURNING *`,
     [userId, orgId, roleId, entId || null],
@@ -76,15 +92,18 @@ const removeMembership = async (membershipId, userId) => {
   return result.rows[0];
 };
 
-const getMembershipCodes = async (userId) => {
+const getMembershipCodes = async (userId, orgId = null) => {
+  // orgId filters codes to a single org (used by the org-scoped route);
+  // without it, codes across all of the user's orgs are returned.
   const result = await pool.query(
     `SELECT (o.org_code * 1000 + COALESCE(e.ent_code, 0)) AS membership_code
      FROM user_memberships um
      JOIN organizations o ON o.id = um.org_id
      LEFT JOIN entities e ON e.id = um.ent_id
      WHERE um.user_id = $1 AND um.is_active = TRUE AND o.is_active = TRUE
+       AND ($2::uuid IS NULL OR um.org_id = $2::uuid)
      ORDER BY o.org_code, e.ent_code`,
-    [userId],
+    [userId, orgId],
   );
   return result.rows.map(r => r.membership_code);
 };
@@ -125,6 +144,7 @@ export {
   getMembershipsForUser,
   getMembershipById,
   assignMembership,
+  assignMembershipAsOrgAdmin,
   updateMembership,
   removeMembership,
   getMembershipCodes,

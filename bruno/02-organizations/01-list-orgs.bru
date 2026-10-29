@@ -1,0 +1,23 @@
+meta {
+  name: List Organizations
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/organizations
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+tests {
+  test("lists organizations", function() {
+    expect(res.getStatus()).to.equal(200);
+    const data = res.getBody();
+    expect(data).to.be.an("array");
+  });
+}

@@ -28,9 +28,11 @@ const getEntityByCode = async (orgId, entCode) => {
 };
 
 const createEntity = async (orgId, name, code, entCode) => {
+  // ent_code is NOT NULL: auto-assign from the shared sequence when the
+  // caller doesn't provide one (001_auth_refactor created ent_code_seq).
   const result = await pool.query(
-    "INSERT INTO entities (org_id, name, code, ent_code) VALUES ($1, $2, $3, $4) RETURNING *",
-    [orgId, name, code, entCode],
+    "INSERT INTO entities (org_id, name, code, ent_code) VALUES ($1, $2, $3, COALESCE($4, nextval('ent_code_seq'))) RETURNING *",
+    [orgId, name, code, entCode || null],
   );
   return result.rows[0];
 };

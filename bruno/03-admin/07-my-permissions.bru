@@ -1,0 +1,21 @@
+meta {
+  name: My Permissions
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/organizations/{{orgId}}/permissions/my-permissions
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+tests {
+  test("returns permissions for admin", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

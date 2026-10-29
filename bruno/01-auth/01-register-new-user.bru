@@ -1,0 +1,43 @@
+meta {
+  name: Register New User
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/auth/register
+  body: json
+  auth: none
+}
+
+script:pre-request {
+  // Always regenerate: the CLI persists env vars between runs, so a
+  // reused runTag would collide with previous runs' unique values.
+  bru.setEnvVar("runTag", String(Date.now()).slice(-8));
+  const tag = bru.getEnvVar("runTag");
+  bru.setEnvVar("newStaffEmail", `runner.${tag}@acme.test`);
+  req.setBody({
+    email: `runner.${tag}@acme.test`,
+    password: "{{testPassword}}",
+    firstName: "Run",
+    lastName: "Ner",
+    mobile: `+1415555${String(1000 + (Number(tag) % 8999))}`,
+  });
+}
+
+body:json {
+  {
+    "email": "{{newStaffEmail}}",
+    "password": "{{testPassword}}",
+    "firstName": "Run",
+    "lastName": "Ner",
+    "mobile": "+14155550199"
+  }
+}
+
+tests {
+  test("register returns 200 or 409 if rerun", function() {
+    const status = res.getStatus();
+    expect(status === 200 || status === 201 || status === 409).to.equal(true);
+  });
+}

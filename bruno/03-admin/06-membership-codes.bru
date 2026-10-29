@@ -1,0 +1,26 @@
+meta {
+  name: Membership Codes
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/organizations/{{orgId}}/users/{{newUserId}}/memberships/codes
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+tests {
+  test("returns 6-digit codes", function() {
+    expect(res.getStatus()).to.equal(200);
+    const data = res.getBody();
+    expect(data).to.be.an("array");
+    if (data.length > 0) {
+      expect(String(data[0]).length).to.equal(6);
+    }
+  });
+}

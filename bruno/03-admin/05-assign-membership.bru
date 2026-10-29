@@ -1,0 +1,34 @@
+meta {
+  name: Assign Membership (staff at new entity)
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/organizations/{{orgId}}/users/{{newUserId}}/memberships
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+script:pre-request {
+  req.setBody({
+    orgId: bru.getEnvVar("orgId"),
+    entId: bru.getEnvVar("entId"),
+    roleId: bru.getEnvVar("roleIdStaff"),
+  });
+}
+
+script:post-response {
+  const data = res.getBody();
+  bru.setEnvVar("membershipId", data.id);
+}
+
+tests {
+  test("membership assigned", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

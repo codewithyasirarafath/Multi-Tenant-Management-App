@@ -15,6 +15,6 @@
       "*.env.*": "deny",
       "*.env.example": "allow"
     },
-    "bash": "ask"
+    "bash": "deny"
   }
 }

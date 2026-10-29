@@ -1,0 +1,38 @@
+meta {
+  name: Create Organization B (for isolation tests)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/organizations
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+script:pre-request {
+  const tag = bru.getEnvVar("runTag");
+  const code = 200 + (Number(tag.slice(-3)) % 700);
+  bru.setEnvVar("orgBCode", code);
+  bru.setVar("orgBCode", code);
+  req.setBody({
+    name: `Isolation Test Org ${tag}`,
+    slug: `isolation-org-${tag}`,
+    orgCode: code,
+  });
+}
+
+script:post-response {
+  const data = res.getBody();
+  bru.setEnvVar("orgBId", data.id);
+}
+
+tests {
+  test("org B created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

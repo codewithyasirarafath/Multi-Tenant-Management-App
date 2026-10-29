@@ -1,0 +1,21 @@
+meta {
+  name: Revoke API Key
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/organizations/{{orgId}}/api-keys/{{generatedApiKeyId}}/revoke
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+tests {
+  test("key revoked", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

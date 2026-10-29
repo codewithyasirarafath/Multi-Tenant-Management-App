@@ -1,0 +1,39 @@
+meta {
+  name: Login Admin
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "admin@acme.test",
+    "password": "Passw0rd!123"
+  }
+}
+
+script:post-response {
+  const data = res.getBody();
+  bru.setEnvVar("authToken", data.accessToken);
+  bru.setEnvVar("userId", data.user.id);
+  bru.setEnvVar("orgId", data.memberships[0].org_id);
+}
+
+tests {
+  test("login succeeds", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("returns accessToken", function() {
+    const data = res.getBody();
+    expect(data.accessToken).to.be.a("string");
+  });
+  test("returns membershipCodes", function() {
+    const data = res.getBody();
+    expect(data.membershipCodes).to.have.lengthOf.at.least(1);
+  });
+}

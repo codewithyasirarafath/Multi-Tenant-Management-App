@@ -1,0 +1,43 @@
+meta {
+  name: Create Product
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/organizations/{{orgId}}/inventory
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+script:pre-request {
+  const tag = bru.getEnvVar("runTag");
+  const sku = `RUN-${tag}`;
+  bru.setEnvVar("productSku", sku);
+  req.setBody({
+    entId: bru.getEnvVar("entId"),
+    name: `Runner Widget ${tag}`,
+    sku: sku,
+    unit: "piece",
+    costPrice: 5,
+    salePrice: 12.5,
+    trackInventory: true,
+    minStockLevel: 5,
+    maxStockLevel: 200,
+  });
+}
+
+script:post-response {
+  const data = res.getBody();
+  bru.setEnvVar("productId", data.id);
+}
+
+tests {
+  test("product created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

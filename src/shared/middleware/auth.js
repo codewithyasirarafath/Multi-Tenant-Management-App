@@ -72,11 +72,10 @@ export const authMiddleware = async (req, res, next) => {
     const decoded = verifyToken(token);
 
     const memberships = await getUserMemberships(decoded.userId);
-    
-    if (memberships.length === 0) {
-      throw new ForbiddenError('User has no active memberships');
-    }
 
+    // NOTE: an empty list is valid — freshly registered users have no org
+    // yet (they create their first org, which grants them org_admin).
+    // Org-scoped routes reject them via requireOrgAccess, not here.
     req.auth = {
       userId: decoded.userId,
       email: decoded.email,

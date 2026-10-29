@@ -1,0 +1,33 @@
+meta {
+  name: List Roles
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/organizations/{{orgId}}/roles
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+script:post-response {
+  const data = res.getBody();
+  const staff = data.find((r) => r.name === "staff" && r.org_id === null);
+  if (staff) bru.setEnvVar("roleIdStaff", staff.id);
+}
+
+tests {
+  test("lists roles", function() {
+    expect(res.getStatus()).to.equal(200);
+    const data = res.getBody();
+    expect(data).to.be.an("array");
+  });
+  test("system staff role exists", function() {
+    const data = res.getBody();
+    expect(data.some((r) => r.name === "staff" && r.org_id === null)).to.equal(true);
+  });
+}

@@ -1,0 +1,29 @@
+meta {
+  name: Ask AI (pending count)
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/organizations/{{orgId}}/ai-chat/ask
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+body:json {
+  {
+    "question": "how many deliveries are pending?"
+  }
+}
+
+tests {
+  test("ai-chat answers", function() {
+    expect(res.getStatus()).to.equal(200);
+    const data = res.getBody();
+    expect(data.answer).to.be.a("string");
+  });
+}

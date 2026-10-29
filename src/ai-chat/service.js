@@ -50,11 +50,11 @@ const detectMetaIntent = (q) => {
 
 const META_ANSWERS = {
   tables:
-    "This app has these tables: organizations, entities, users, roles, user_roles, deliveries, ai_conversations, ai_messages.",
+    "This app has these tables: organizations, entities, users, roles, user_memberships, deliveries, products, inventory, customers, invoices, payments, notifications, alerts, audit_logs, webhook_subscriptions, api_keys, ai_conversations and ai_messages.",
   routes:
-    "Main resources: /api/organizations, /api/organizations/:orgId/entities, /users, /roles, /deliveries, and /ai-chat/conversations.",
+    "Main resources: /api/v1/organizations, /organizations/:orgId/entities, /users, /roles, /deliveries, /inventory, /customers, /invoicing, /notifications and /ai-chat/ask.",
   overview:
-    "This is a multi-tenant delivery management app - organizations contain entities and users, users hold roles, and deliveries are tracked per organization.",
+    "This is a multi-tenant delivery management app - organizations contain entities and users, users hold roles via memberships, and deliveries, inventory, customers and invoices are tracked per organization.",
 };
 
 // ============================================

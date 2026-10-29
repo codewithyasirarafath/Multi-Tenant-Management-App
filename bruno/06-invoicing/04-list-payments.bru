@@ -1,0 +1,23 @@
+meta {
+  name: List Payments for Invoice
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/organizations/{{orgId}}/invoicing/{{invoiceId}}/payments
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+tests {
+  test("lists payments", function() {
+    expect(res.getStatus()).to.equal(200);
+    const data = res.getBody();
+    expect(data.length).to.be.at.least(1);
+  });
+}

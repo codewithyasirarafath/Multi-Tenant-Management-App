@@ -1,14 +1,15 @@
 import express from "express";
 import * as apiKeyModel from "./model.js";
 import { asyncHandler } from "../shared/middleware/errorHandler.js";
-import { UnauthorizedError, ForbiddenError } from "../shared/utils/errors.js";
+import { UnauthorizedError, ForbiddenError, NotFoundError } from "../shared/utils/errors.js";
 import { z } from 'zod';
 import { validate } from "../shared/middleware/validation.js";
 import { schemas } from "../shared/middleware/validation.js";
 import { authMiddleware } from "../shared/middleware/auth.js";
 import { requireOrgAccess } from "../shared/middleware/auth.js";
 
-const router = express.Router();
+// mergeParams: required to receive :orgId from the org-scoped mount in app.js
+const router = express.Router({ mergeParams: true });
 
 // --- Generate new API key (org admin only) ---
 const generateApiKey = asyncHandler(async (req, res) => {
@@ -25,7 +26,8 @@ const generateApiKey = asyncHandler(async (req, res) => {
 
   const result = await apiKeyModel.generateApiKey(orgId, name, permissionScopes);
   res.status(201).json({
-    key: result.keyPrefix,
+    key: result.key, // full key — shown exactly once
+    prefix: result.keyPrefix,
     name: result.name,
     permissionScopes: result.permissionScopes,
     expiresAt: result.expiresAt,
@@ -58,24 +60,28 @@ const revokeApiKey = asyncHandler(async (req, res) => {
   res.status(200).json({ message: "API key revoked" });
 });
 
-// --- Validate API key (for incoming requests) ---
-const validateIncomingApiKey = asyncHandler(async (req, res, next) => {
+// --- Validate API key (for incoming machine requests) ---
+const validateIncomingApiKey = asyncHandler(async (req, res) => {
   const { key } = req.validated.body || {};
   if (!key) {
     throw new UnauthorizedError('API key required');
   }
 
-  // Simple hash validation - in production, use constant-time comparison
+  // The key itself is the credential; responses never include the hash.
   const result = await apiKeyModel.validateApiKey(key);
-  if (!result.rows.length) {
+  if (!result.length) {
     throw new UnauthorizedError('Invalid API key');
   }
 
-  const keyData = result.rows[0];
-  // Attach org info to request for middleware use
+  const keyData = result[0];
+  // Attach org info to the request for middleware-style use, and respond so
+  // the caller learns which org the key belongs to.
   req.apiKeyOrgId = keyData.org_id;
   req.apiKeyPermissions = keyData.permission_scopes;
-  next();
+  res.status(200).json({
+    orgId: keyData.org_id,
+    permissionScopes: keyData.permission_scopes,
+  });
 });
 
 const apiKeySchemas = {
