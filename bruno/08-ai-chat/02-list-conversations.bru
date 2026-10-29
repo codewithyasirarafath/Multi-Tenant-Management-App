@@ -1,0 +1,21 @@
+meta {
+  name: List AI Conversations
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/organizations/{{orgId}}/ai-chat/conversations
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+tests {
+  test("lists conversations", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

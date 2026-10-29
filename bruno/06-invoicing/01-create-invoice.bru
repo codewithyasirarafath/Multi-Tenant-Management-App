@@ -1,0 +1,41 @@
+meta {
+  name: Create Invoice
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/organizations/{{orgId}}/invoicing
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+script:pre-request {
+  const tag = bru.getEnvVar("runTag");
+  const num = `INV-R-${tag}`;
+  bru.setEnvVar("invoiceNumber", num);
+  req.setBody({
+    customerId: bru.getEnvVar("customerId"),
+    deliveryId: bru.getEnvVar("deliveryId"),
+    invoiceNumber: num,
+    subtotal: 100,
+    tax: 5,
+    total: 105,
+    notes: "Created by Bruno run",
+  });
+}
+
+script:post-response {
+  const data = res.getBody();
+  bru.setEnvVar("invoiceId", data.id);
+}
+
+tests {
+  test("invoice created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

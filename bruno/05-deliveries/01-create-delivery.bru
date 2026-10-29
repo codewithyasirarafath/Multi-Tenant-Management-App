@@ -1,0 +1,44 @@
+meta {
+  name: Create Delivery
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/organizations/{{orgId}}/deliveries
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+script:pre-request {
+  const tag = bru.getEnvVar("runTag");
+  const trk = `TRK-R-${tag}`;
+  bru.setEnvVar("trackingNumber", trk);
+  req.setBody({
+    entId: bru.getEnvVar("entId"),
+    trackingNumber: trk,
+    senderName: "Runner Sender",
+    receiverName: "Runner Receiver",
+    destination: "Runner City",
+    status: "pending",
+  });
+}
+
+script:post-response {
+  const data = res.getBody();
+  bru.setEnvVar("deliveryId", data.id);
+}
+
+tests {
+  test("delivery created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  test("status defaults to pending", function() {
+    const data = res.getBody();
+    expect(data.status).to.equal("pending");
+  });
+}

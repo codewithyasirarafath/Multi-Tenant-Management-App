@@ -90,7 +90,7 @@ BEGIN
       AND o.is_active = TRUE
       AND (ak.expires_at IS NULL OR ak.expires_at > NOW());
 END;
-$$ LANGUAGE sql;
+$$ LANGUAGE plpgsql;
 
 -- ============================================
 -- 5. FUNCTION: Revoke API Key

@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+/* ============ Design tokens — light ============ */
+:root {
+  --background: oklch(0.98 0.005 250);
+  --foreground: oklch(0.22 0.02 260);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.02 260);
+  --primary: oklch(0.52 0.18 264);
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.955 0.01 255);
+  --secondary-foreground: oklch(0.3 0.02 260);
+  --muted: oklch(0.955 0.008 255);
+  --muted-foreground: oklch(0.52 0.02 258);
+  --accent: oklch(0.94 0.03 264);
+  --destructive: oklch(0.55 0.21 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.91 0.01 255);
+  --ring: oklch(0.62 0.14 264);
+  --success: oklch(0.58 0.15 152);
+  --warning: oklch(0.68 0.15 78);
+  --radius: 0.65rem;
+  --sidebar: oklch(0.97 0.01 255);
+  --gradient-from: oklch(0.52 0.18 264);
+  --gradient-to: oklch(0.45 0.16 205);
+}
+
+/* ============ Design tokens — dark ============ */
+.dark {
+  --background: oklch(0.17 0.015 262);
+  --foreground: oklch(0.93 0.01 255);
+  --card: oklch(0.21 0.02 262);
+  --card-foreground: oklch(0.93 0.01 255);
+  --primary: oklch(0.68 0.15 264);
+  --primary-foreground: oklch(0.16 0.02 262);
+  --secondary: oklch(0.27 0.02 262);
+  --secondary-foreground: oklch(0.9 0.01 255);
+  --muted: oklch(0.26 0.015 262);
+  --muted-foreground: oklch(0.68 0.015 258);
+  --accent: oklch(0.3 0.04 264);
+  --destructive: oklch(0.62 0.19 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.3 0.02 262);
+  --ring: oklch(0.55 0.12 264);
+  --success: oklch(0.68 0.14 152);
+  --warning: oklch(0.75 0.14 80);
+  --sidebar: oklch(0.19 0.02 262);
+  --gradient-from: oklch(0.62 0.16 264);
+  --gradient-to: oklch(0.52 0.14 205);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-sidebar: var(--sidebar);
+  --radius-lg: var(--radius);
+}
+
+body {
+  @apply bg-background text-foreground antialiased;
+}
+
+/* Distinctive brand gradient text */
+.brand-text {
+  background: linear-gradient(120deg, var(--gradient-from), var(--gradient-to));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.brand-gradient {
+  background: linear-gradient(120deg, var(--gradient-from), var(--gradient-to));
+}
+
+/* Subtle card lift on hover for interactive tiles */
+.tile {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px -12px oklch(0.3 0.05 260 / 0.35);
+}
+
+/* Chat bubbles */
+.bubble-user {
+  background: linear-gradient(120deg, var(--gradient-from), var(--gradient-to));
+  color: white;
+}
+.bubble-assistant {
+  background: var(--muted);
+}

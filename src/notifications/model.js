@@ -1,22 +1,24 @@
 import pool from "../shared/config/db.js";
 
 const getAllNotifications = async (userId, { limit = 50, offset = 0, type, read, orgId } = {}) => {
-  const conditions = ["user_id = $1"];
+  // Conditions are qualified with `n.` because this query joins organizations
+  // and entities, which also expose org_id (and would make it ambiguous).
+  const conditions = ["n.user_id = $1"];
   const params = [userId];
   let idx = 2;
 
   if (type) {
-    conditions.push(`type = $${idx}`);
+    conditions.push(`n.type = $${idx}`);
     params.push(type);
     idx++;
   }
   if (read !== undefined) {
-    conditions.push(`read = $${idx}`);
+    conditions.push(`n.read = $${idx}`);
     params.push(read);
     idx++;
   }
   if (orgId) {
-    conditions.push(`org_id = $${idx}`);
+    conditions.push(`n.org_id = $${idx}`);
     params.push(orgId);
     idx++;
   }

@@ -1,6 +1,9 @@
-import XSS from "xss";
+import xssPkg from "xss";
 
-const xss = new XSS({
+// xss is a CJS module: default export is a one-shot filter function, and the
+// configurable sanitizer is the FilterXSS class (use .process, not call).
+const { FilterXSS } = xssPkg;
+const xss = new FilterXSS({
   whiteList: {}, // Strip all HTML by default
   onTagAttr: (tag, name, value, isWhiteListed) => {
     // Allow certain safe attributes on a case-by-case basis
@@ -13,7 +16,7 @@ const xss = new XSS({
 // Sanitize a single string value
 const sanitize = (value) => {
   if (typeof value !== "string") return value;
-  return xss(value);
+  return xss.process(value);
 };
 
 // Sanitize an object (recursively sanitize all string values)

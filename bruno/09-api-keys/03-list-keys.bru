@@ -1,0 +1,34 @@
+meta {
+  name: List API Keys (no hash leak)
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/organizations/{{orgId}}/api-keys
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+script:post-response {
+  const data = res.getBody();
+  const mine = data.find((k) => k.name.startsWith("Bruno Key"));
+  if (mine) bru.setEnvVar("generatedApiKeyId", mine.id);
+}
+
+tests {
+  test("lists keys", function() {
+    expect(res.getStatus()).to.equal(200);
+    const data = res.getBody();
+    expect(data.length).to.be.at.least(1);
+  });
+  test("no key hashes in list response", function() {
+    const body = res.getBody();
+    const json = JSON.stringify(body);
+    expect(json.includes("key_hash") || json.includes("keyHash")).to.equal(false);
+  });
+}

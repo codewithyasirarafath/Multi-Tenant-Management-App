@@ -1,9 +1,6 @@
-import pool from "../shared/config/db.js";
 import {
-  questionToQueryPlan,
-  resultToAnswer,
-  isSafeWhereClause,
-} from "./query-service.js";
+  runChatTurn,
+} from "./service.js";
 import * as aiConvModel from "./model.js";
 import { asyncHandler } from "../shared/middleware/errorHandler.js";
 import { NotFoundError } from "../shared/utils/errors.js";
@@ -35,46 +32,17 @@ const askQuestion = asyncHandler(async (req, res) => {
   // Save user message
   await aiConvModel.addMessage(convId, orgId, req.auth.userId, "user", question);
 
-  // Step 1: LLM proposes a filter
-  const plan = await questionToQueryPlan(question);
-  const whereClause = plan.where || "";
-  const mode = plan.mode === "count" ? "count" : "list";
-
-  // Step 2: Validate filter
-  if (whereClause && !isSafeWhereClause(whereClause)) {
-    return res.status(400).json({
-      error: "Could not safely interpret that question. Try rephrasing it.",
-    });
-  }
-
-  const filterSql = whereClause ? `AND (${whereClause})` : "";
-  let queryText;
-  if (mode === "count") {
-    queryText = `SELECT COUNT(*) AS count FROM deliveries WHERE org_id = $1 ${filterSql}`;
-  } else {
-    queryText = `SELECT id, tracking_number, sender_name, receiver_name, destination, status, created_at
-                 FROM deliveries WHERE org_id = $1 ${filterSql}
-                 ORDER BY created_at DESC LIMIT 20`;
-  }
-
-  const result = await pool.query(queryText, [orgId]);
-  const rows = result.rows;
-
-  // Step 3: Generate answer
-  const answer = await resultToAnswer(question, mode, rows);
+  // Rule-based assistant: keyword/pattern matching + parameterized queries,
+  // scoped by org_id (see service.js). No external API involved.
+  const answer = await runChatTurn(orgId, [{ role: "user", content: question }]);
 
   // Save assistant message
-  await aiConvModel.addMessage(convId, orgId, req.auth.userId, "assistant", answer, {
-    mode,
-    rowCount: rows.length,
-    plan,
-  });
+  await aiConvModel.addMessage(convId, orgId, req.auth.userId, "assistant", answer);
 
   res.status(200).json({
     conversationId: convId,
     question,
     answer,
-    data: rows,
   });
 });
 

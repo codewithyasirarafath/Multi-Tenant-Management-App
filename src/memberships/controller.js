@@ -8,15 +8,10 @@ const getUserMemberships = asyncHandler(async (req, res) => {
 });
 
 const getUserMembershipCodes = asyncHandler(async (req, res) => {
-  const { email } = req.validated.body;
-  const user = await userMembershipModel.getUserByEmailWithMemberships(email);
-  if (!user) return res.status(404).json({ error: "User not found" });
-  
-  const codes = user.memberships
-    ?.filter(m => m.is_active)
-    .map(m => m.org_code * 1000 + (m.ent_code || 0)) || [];
-  
-  res.status(200).json({ email, membershipCodes: codes });
+  // Org-scoped GET: codes for the URL's user within this organization.
+  const { orgId, userId } = req.params;
+  const codes = await userMembershipModel.getMembershipCodes(userId, orgId);
+  res.status(200).json(codes);
 });
 
 const assignMembership = asyncHandler(async (req, res) => {

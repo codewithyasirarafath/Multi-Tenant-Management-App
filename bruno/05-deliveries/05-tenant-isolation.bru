@@ -1,0 +1,21 @@
+meta {
+  name: Tenant Isolation: staff (org A) token on org B (negative, expect 403)
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/organizations/{{orgBId}}/deliveries
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{staffToken}}
+}
+
+tests {
+  test("cross-org access denied", function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+}

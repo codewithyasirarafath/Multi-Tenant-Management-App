@@ -1,0 +1,30 @@
+meta {
+  name: Add Payment
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/organizations/{{orgId}}/invoicing/{{invoiceId}}/payments
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+script:pre-request {
+  req.setBody({
+    amount: 105,
+    paymentMethod: "card",
+    transactionId: `TXN-${bru.getEnvVar("runTag")}`,
+  });
+}
+
+tests {
+  test("payment recorded", function() {
+    const status = res.getStatus();
+    expect(status === 200 || status === 201).to.equal(true);
+  });
+}

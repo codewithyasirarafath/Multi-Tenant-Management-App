@@ -1,0 +1,23 @@
+meta {
+  name: List Webhooks
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/organizations/{{orgId}}/webhooks
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+tests {
+  test("lists webhooks", function() {
+    expect(res.getStatus()).to.equal(200);
+    const data = res.getBody();
+    expect(data.length).to.be.at.least(1);
+  });
+}

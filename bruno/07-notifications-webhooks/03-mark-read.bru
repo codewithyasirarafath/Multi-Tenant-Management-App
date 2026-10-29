@@ -1,0 +1,27 @@
+meta {
+  name: Mark Notification Read
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{baseUrl}}/organizations/{{orgId}}/notifications/mark-read
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+body:json {
+  {
+    "notificationId": "{{notificationId}}"
+  }
+}
+
+tests {
+  test("marked read", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

@@ -1,0 +1,29 @@
+meta {
+  name: Login Staff
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "staff@acme.test",
+    "password": "Passw0rd!123"
+  }
+}
+
+script:post-response {
+  const data = res.getBody();
+  bru.setEnvVar("staffToken", data.accessToken);
+}
+
+tests {
+  test("staff login succeeds", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

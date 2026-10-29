@@ -1,0 +1,17 @@
+meta {
+  name: Me Without Token (negative)
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/auth/me
+  body: none
+  auth: none
+}
+
+tests {
+  test("unauthenticated me is 401", function() {
+    expect(res.getStatus()).to.equal(401);
+  });
+}
